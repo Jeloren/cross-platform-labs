@@ -1,39 +1,108 @@
+import 'dart:async';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../data/data.dart';
+import '../../../di/di.dart';
+import 'bloc/show_bloc.dart';
 import '../../extensions/extensions.dart';
 import '../../theme/theme.dart';
 import '../../widgets/widgets.dart';
 
 // Экран с описанием сериала.
-class ShowScreen extends StatelessWidget {
+class ShowScreen extends StatefulWidget {
   const ShowScreen({super.key, required this.showId});
-
   final int showId;
 
-  Show? _findShow() {
-    for (final show in mockShows) {
-      if (show.id == showId) {
-        return show;
-      }
+  @override
+  State<ShowScreen> createState() => _ShowScreenState();
+}
+
+class _ShowScreenState extends State<ShowScreen> {
+  late ShowBloc _show;
+
+  void _loadShow() {
+    _show = getIt<ShowBloc>(param1: widget.showId)..add(const ShowLoad());
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadShow();
+  }
+
+  @override
+  void didUpdateWidget(covariant ShowScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.showId != widget.showId) {
+      _show.close();
+      _loadShow();
     }
-    return null;
+  }
+
+  Future<void> _refresh() {
+    final completer = Completer<void>();
+    _show.add(ShowLoad(completer: completer));
+    return completer.future;
+  }
+
+  @override
+  void dispose() {
+    _show.close();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final show = _findShow();
+    return BlocBuilder<ShowBloc, ShowState>(
+      bloc: _show,
+      builder: (context, state) {
+        return Scaffold(
+          appBar: AppAppbar(
+            title: Text(state is ShowLoadSuccess ? state.show.title : 'Сериал'),
+          ),
+          body: switch (state) {
+            ShowInitial() || ShowLoadInProgress() => const Center(
+              child: CircularProgressIndicator(),
+            ),
+            ShowLoadSuccess() => _buildContent(state.show),
+            ShowLoadFailure() => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      state.notFound
+                          ? Icons.search_off_rounded
+                          : Icons.wifi_off_rounded,
+                      size: 48,
+                    ),
+                    16.ph,
+                    Text(state.message, textAlign: TextAlign.center),
+                    if (!state.notFound) ...[
+                      16.ph,
+                      FilledButton(
+                        onPressed: () => _show.add(const ShowLoad()),
+                        child: const Text('Повторить'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          },
+        );
+      },
+    );
+  }
 
-    if (show == null) {
-      return Scaffold(
-        appBar: const AppAppbar(title: Text('Сериал')),
-        body: const Center(child: Text('Сериал не найден')),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppAppbar(title: Text(show.title)),
-      body: SingleChildScrollView(
+  Widget _buildContent(Show show) {
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,69 +110,60 @@ class ShowScreen extends StatelessWidget {
             Center(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  show.image,
-                  width: 220,
-                  height: 330,
-                  fit: BoxFit.cover,
-                ),
+                child: ShowPoster(image: show.image, width: 220, height: 330),
               ),
             ),
             20.ph,
             Text(
               show.title,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context).textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
             10.ph,
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                _InfoChip('${show.year}'),
-                _InfoChip('Сезонов: ${show.seasons}'),
+                if (show.year != null) _InfoChip('${show.year}'),
+                if (show.seasons != null) _InfoChip('Сезонов: ${show.seasons}'),
                 _InfoChip(show.country),
               ],
             ),
             16.ph,
             Row(
               children: [
-                const Icon(
-                  Icons.star_rounded,
-                  color: Colors.amber,
-                  size: 28,
-                ),
+                const Icon(Icons.star_rounded, color: Colors.amber, size: 28),
                 6.pw,
                 Text(
-                  show.rating.toStringAsFixed(1),
+                  show.rating?.toStringAsFixed(1) ?? '—',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                Text(
-                  ' / 10',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text(' / 10', style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
             20.ph,
-            Text(
-              'О сериале',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('О сериале', style: Theme.of(context).textTheme.titleLarge),
             8.ph,
             Text(
               show.description,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: 16,
-                    height: 1.5,
-                  ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(fontSize: 16, height: 1.5),
             ),
             20.ph,
-            _InfoRow(label: 'Жанры', value: show.genres.join(', ')),
-            _InfoRow(label: 'Премьера', value: '${show.year}'),
+            _InfoRow(
+              label: 'Жанры',
+              value: show.genres.isEmpty
+                  ? 'Не указаны'
+                  : show.genres.join(', '),
+            ),
+            _InfoRow(
+              label: 'Премьера',
+              value: show.year?.toString() ?? 'Не указана',
+            ),
             _InfoRow(label: 'Страна', value: show.country),
             _InfoRow(label: 'Телеканал', value: show.network),
-            _InfoRow(label: 'Сезонов', value: '${show.seasons}'),
+            if (show.seasons != null)
+              _InfoRow(label: 'Сезонов', value: '${show.seasons}'),
           ],
         ),
       ),
@@ -127,9 +187,8 @@ class _InfoChip extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: ThemeColors.accent,
-            ),
+        style: Theme.of(context).textTheme.bodySmall
+            ?.copyWith(color: ThemeColors.accent),
       ),
     );
   }
@@ -151,16 +210,10 @@ class _InfoRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 110,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
           ),
         ],
       ),

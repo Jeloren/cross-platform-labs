@@ -18,9 +18,9 @@ class Show {
   final String description;
   final String image;
   final List<String> genres;
-  final double rating;
-  final int year;
-  final int seasons;
+  final double? rating;
+  final int? year;
+  final int? seasons;
   final String country;
   final String network;
 }

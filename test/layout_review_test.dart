@@ -3,7 +3,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:series_guide/app/features/home/home_screen.dart';
 import 'package:series_guide/app/features/show/show_screen.dart';
 
+import 'fixtures/test_repository.dart';
+
 void main() {
+  setUp(() async => registerTestRepository(TestRepository()));
   testWidgets('Карточки помещаются на узком экране с крупным текстом', (
     tester,
   ) async {
@@ -23,10 +26,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    await tester.drag(
-      find.byType(SingleChildScrollView).first,
-      const Offset(0, -1500),
-    );
+    await tester.drag(find.byType(ListView).first, const Offset(0, -1500));
     await tester.pumpAndSettle();
     expect(find.text('Северный ветер'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -48,7 +48,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const MaterialApp(home: ShowScreen(showId: 102)));
+    await tester.pumpWidget(MaterialApp(home: ShowScreen(showId: 102)));
     await tester.pumpAndSettle();
     await tester.drag(
       find.byType(SingleChildScrollView),

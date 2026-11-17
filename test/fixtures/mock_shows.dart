@@ -1,4 +1,4 @@
-import 'models/models.dart';
+import 'package:series_guide/data/models/show.dart';
 
 const List<Show> mockShows = [
   Show(

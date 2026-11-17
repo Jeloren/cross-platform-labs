@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/data.dart';
 import '../extensions/extensions.dart';
 import '../theme/theme.dart';
+import 'show_poster.dart';
 
 // Карточка сериала в списке.
 class ShowCard extends StatelessWidget {
@@ -29,12 +30,7 @@ class ShowCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    show.image,
-                    width: 92,
-                    height: 132,
-                    fit: BoxFit.cover,
-                  ),
+                  child: ShowPoster(image: show.image, width: 92, height: 132),
                 ),
                 Expanded(
                   child: Column(
@@ -48,7 +44,10 @@ class ShowCard extends StatelessWidget {
                       ),
                       4.ph,
                       Text(
-                        '${show.year} · ${show.genres.join(' · ')}',
+                        [
+                          if (show.year != null) '${show.year}',
+                          ...show.genres,
+                        ].join(' · '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall,
@@ -71,12 +70,12 @@ class ShowCard extends StatelessWidget {
                           ),
                           4.pw,
                           Text(
-                            show.rating.toStringAsFixed(1),
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: ThemeColors.black,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                            show.rating?.toStringAsFixed(1) ?? '—',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: ThemeColors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                         ],
                       ),

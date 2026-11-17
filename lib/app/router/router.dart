@@ -15,10 +15,8 @@ final router = GoRouter(
   routes: [
     GoRoute(
       path: '/home',
-      pageBuilder: (_, state) => MaterialPage(
-        key: state.pageKey,
-        child: const HomeScreen(),
-      ),
+      pageBuilder: (_, state) =>
+          MaterialPage(key: state.pageKey, child: const HomeScreen()),
     ),
     GoRoute(
       path: '/show/:id',
